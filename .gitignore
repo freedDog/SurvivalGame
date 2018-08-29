@@ -1,0 +1,37 @@
+# Project Files
+cocos2d
+proj.android
+proj.android-studio
+proj.ios_mac
+proj.linux
+proj.tizen
+proj.win10
+proj.win32
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
