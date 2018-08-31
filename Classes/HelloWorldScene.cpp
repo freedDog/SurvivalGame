@@ -1,8 +1,10 @@
 #include "HelloWorldScene.h"
 //#include "cocostudio/CocoStudio.h"
 #include "ui/CocosGUI.h"
-
-
+#include <google/protobuf/message_lite.h>
+#include <google/protobuf/io/coded_stream.h>
+#include <google/protobuf/io/zero_copy_stream_impl_lite.h>
+#include <iostream>
 
 
 USING_NS_CC;
@@ -42,8 +44,8 @@ bool HelloWorld::init()
 
 		//ÍøÂç°´Å¥
 		MenuItemImage *pLinkItem = MenuItemImage::create(
-			"CloseNormal.png",
-			"CloseSelected.png",
+			"36.png",
+			"36.png",
 			CC_CALLBACK_1(HelloWorld::menuLinkCallback, this)
 		);
 		CC_BREAK_IF(!pLinkItem);
@@ -54,8 +56,8 @@ bool HelloWorld::init()
 
 		//µÇÂ½°´Å¥
 		MenuItemImage *pLoginItem = MenuItemImage::create(
-			"CloseNormal.png",
-			"CloseSelected.png",
+			"37.png",
+			"37.png",
 			CC_CALLBACK_1(HelloWorld::menuLoginCallback, this)
 		);
 		CC_BREAK_IF(!pLoginItem);
@@ -66,8 +68,8 @@ bool HelloWorld::init()
 
 		//·¢ËÍ°´Å¥
 		MenuItemImage *pSendItem = MenuItemImage::create(
-			"CloseNormal.png",
-			"CloseSelected.png",
+			"38.png",
+			"38.png",
 			CC_CALLBACK_1(HelloWorld::menuSendCallback, this)
 		);
 		CC_BREAK_IF(!pSendItem);
@@ -78,8 +80,8 @@ bool HelloWorld::init()
 
 		//¶¯»­°´Å¥
 		MenuItemImage *pAnimateItem = MenuItemImage::create(
-			"CloseNormal.png",
-			"CloseSelected.png",
+			"39.png",
+			"39.png",
 			CC_CALLBACK_1(HelloWorld::menuAnimateCallback, this)
 		);
 		CC_BREAK_IF(!pAnimateItem);
@@ -214,14 +216,31 @@ void HelloWorld::menuLoginCallback(Ref* pSender)
 
 	//protocol buffer
 	GOOGLE_PROTOBUF_VERIFY_VERSION;
+	GameMessage::LoginRequest login;
+	login.set_msgid(10001);
+	std::string account = "ytyy";
+	login.set_account(account);
+	std::string password = "12345";
+	login.set_password(password);
+	login.set_logintype(GameMessage::LoginType::ACCOUNT);
+	login.set_sessionid(1234);
+	login.set_gateid(1);
+	std::string ip = "192.168..0.1";
+	login.set_ip(ip);
+	std::string version = "0.0.0.1";
+	login.set_version(version);
+	int len = login.ByteSize()+4;
+	char *buffer = new char[len];
+	memset(buffer, 0, len);
+	google::protobuf::io::ZeroCopyOutputStream *raw_ouput;
+	google::protobuf::io::ArrayOutputStream arr(buffer,len);
+	google::protobuf::io::CodedOutputStream codeOut(&arr);
+	codeOut.WriteVarint32(login.ByteSize());
+	bool isSup=login.SerializeToCodedStream(&codeOut);
+	//login.SerializeToArray(buffer, len);
 
-	talkbox::talk_create user;
-	user.set_name(txtInput->getString().c_str());
-	user.set_userid(123);
-	std::string userbuf;
-	user.SerializeToString(&userbuf);
-	TcpMsg->pushSendQueue(userbuf, 1003);
-
+	TcpMsg->pushSendQueue(buffer, 10001);
+	std::cout << "buffer:"<<*buffer;
 	CCLOG("menuLoginCallback");
 
 	//TcpMsg->sendFunc();
@@ -229,7 +248,7 @@ void HelloWorld::menuLoginCallback(Ref* pSender)
 
 void HelloWorld::menuSendCallback(Ref* pSender)
 {
-	TcpMsg* TcpMsg = TcpMsg::shareTcpMsg();
+/*	TcpMsg* TcpMsg = TcpMsg::shareTcpMsg();
 
 	GOOGLE_PROTOBUF_VERIFY_VERSION;
 	talkbox::talk_message msg;
@@ -242,7 +261,7 @@ void HelloWorld::menuSendCallback(Ref* pSender)
 
 	CCLOG("menuSendCallback");
 
-	//TcpMsg->sendFunc();
+	//TcpMsg->sendFunc();*/
 }
 
 //µÇÂ½ÊÂ¼þ
@@ -251,14 +270,14 @@ void HelloWorld::userLogin(Ref* pSender) {
 
 	TcpMsg* TcpMsg = TcpMsg::shareTcpMsg();
 
-	GOOGLE_PROTOBUF_VERIFY_VERSION;
+/*	GOOGLE_PROTOBUF_VERIFY_VERSION;
 	talkbox::talk_message msg;
 	msg.set_msg("hello every,i am newer!");
 	msg.set_touserid(-1);
 	msg.set_fromuserid(userid);
 	std::string msgbuf;
 	msg.SerializeToString(&msgbuf);
-	TcpMsg->pushSendQueue(msgbuf, 1005);
+	TcpMsg->pushSendQueue(msgbuf, 10003);*/
 }
 
 void HelloWorld::msgLogic(float dt)
@@ -266,7 +285,7 @@ void HelloWorld::msgLogic(float dt)
 	Queue* recvQueue = TcpMsg::shareTcpMsg()->getRecvQueue();
 	if (recvQueue != NULL && recvQueue->getSize() > 0)
 	{
-		Pocket* pk = recvQueue->PullPocket();
+		/*Pocket* pk = recvQueue->PullPocket();
 		char txt[1024] = { 0 };
 		if (pk->id == 0) {
 			sprintf(txt, "\nnew msg:%s", pk->msg);
@@ -322,6 +341,7 @@ void HelloWorld::msgLogic(float dt)
 		std::string oldtxt = txtLabel->getString();
 		oldtxt.append(txt);
 		txtLabel->setString(oldtxt);
+		*/
 
 	}
 	//CCLOG("msgLogic");

@@ -32,7 +32,7 @@ public:
 	Queue* getRecvQueue();
 	Queue* getSendQueue();
 	
-	void pushSendQueue(std::string str, unsigned int msgid);//加入发送队列
+	void pushSendQueue(const char* msg, unsigned int msgid);//加入发送队列
 	void pushRecvQueue(std::string str, unsigned int msgid);//加入接收队列
 
 	void recvFunc(void);//接收消息方法

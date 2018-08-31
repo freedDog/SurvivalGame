@@ -82,6 +82,7 @@ bool ODSocket::Connect(const char* ip, unsigned short port)
 	svraddr.sin_port = htons(port);
 	int ret = connect(m_sock, (struct sockaddr*)&svraddr, sizeof(svraddr));
 
+
 #ifdef WIN32 
 	DWORD nMode = 1;
 	int nRes = ioctlsocket(m_sock, FIONBIO, &nMode);
@@ -97,6 +98,19 @@ bool ODSocket::Connect(const char* ip, unsigned short port)
 	if (ret == SOCKET_ERROR) {
 		return false;
 	}
+
+/**	int bytes;
+	int count = 0;
+	char *msg = "Beej was here!";
+	int len = strlen(msg);
+	while (count < len) {
+
+		//	bytes = send(m_sock, buf + count, len - count, flags);
+		bytes = send(m_sock, msg, len , 0);
+		if (bytes == -1 || bytes == 0)
+			return -1;
+		count += bytes;
+	}*/
 	return true;
 }
 

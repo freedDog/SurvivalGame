@@ -57,9 +57,8 @@ Pocket* TcpMsg::MakePocket(const char* msg, unsigned int msgid)
 
 	pk->length = strlen(msg);
 	pk->id = msgid;
-	pk->version = 1;
-	pk->msg = new char[pk->length + 1];
-	memset(pk->msg, 0, pk->length + 1);
+	pk->msg = new char[pk->length ];
+	memset(pk->msg, 0, pk->length );
 	memcpy(pk->msg, msg, pk->length);
 
 	return pk;
@@ -81,9 +80,9 @@ Queue* TcpMsg::getSendQueue()
 	return m_sendQueue;
 }
 
-void TcpMsg::pushSendQueue(std::string str, unsigned int msgid)
+void TcpMsg::pushSendQueue(const char* msg, unsigned int msgid)
 {
-	Pocket* pk = TcpMsg::MakePocket(str.c_str(), msgid);
+	Pocket* pk = TcpMsg::MakePocket(msg, msgid);
 	if (m_sendQueue!=NULL) 
 	{
 		m_sendQueue->PushPocket(pk);
@@ -133,22 +132,26 @@ void TcpMsg::sendFunc(void)
 		Pocket* pk = m_sendQueue->PullPocket();
 		if (pk->id>0) 
 		{
-			char* sendData = new char[pk->length + 8];
-			memset(sendData, 0, pk->length + 8);
+			char* sendData = new char[pk->length + 10];
+			memset(sendData, 0, pk->length + 10);
+			//包长
+			sendData[0] = ((pk->length + 8)) & 0xff;
+			sendData[1] = (pk->length + 8) >> 8 & 0xff;
+			//消息ID
+			sendData[2] = (pk->id ) & 0xff;
+			sendData[3] = (pk->id >> 8) & 0xff;
+			sendData[4] = (pk->id >> 16) & 0xff;
+			sendData[5] = (pk->id >> 24) & 0xff;
+			//消息内容长度
+			sendData[6] = (pk->length ) & 0xff;
+			sendData[7] = (pk->length >> 8) & 0xff;
+			sendData[8] = (pk->length >> 16) & 0xff;
+			sendData[9] = (pk->length >> 24) & 0xff;
 
-			sendData[0] = ((pk->length + 6) >> 8) & 0xff;
-			sendData[1] = (pk->length + 6) & 0xff;
 
-			sendData[2] = (pk->version >> 8) & 0xff;
-			sendData[3] = pk->version & 0xff;
+			memcpy(sendData + 10, pk->msg, pk->length);
 
-			sendData[4] = (pk->id >> 24) & 0xff;
-			sendData[5] = (pk->id >> 16) & 0xff;
-			sendData[6] = (pk->id >> 8) & 0xff;
-			sendData[7] = pk->id & 0xff;
-			memcpy(sendData + 8, pk->msg, pk->length);
-
-			int s = m_socket.Send(sendData, pk->length + 8, 0);
+			int s = m_socket.Send(sendData, pk->length + 10, 0);
 
 			CC_SAFE_DELETE(sendData);
 		}

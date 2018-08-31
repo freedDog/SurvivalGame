@@ -5,8 +5,8 @@
 #include "Classes\NetWork\TcpMsg.h"
 
 #include "Utils/CursorTextField.h"
+#include "Data\HallLoginMessage.pb.h"
 
-#include "Data\talkbox.pb.h"
 
 #if _DEBUG
 #pragma comment(lib, "libprotobufd.lib")
