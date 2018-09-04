@@ -1,6 +1,5 @@
 #include "AppDelegate.h"
-#include "HelloWorldScene.h"
-#include "Classes\NetWork\MySocketIO.h"
+#include "Scenes\LoginScene.h"
 
 // #define USE_AUDIO_ENGINE 1
 // #define USE_SIMPLE_AUDIO_ENGINE 1
@@ -58,7 +57,7 @@ bool AppDelegate::applicationDidFinishLaunching() {
 	FileUtils::getInstance()->addSearchPath("res");
 
 	// create a scene. it's an autorelease object
-	auto scene = HelloWorld::createScene();
+	auto scene = LoginGame::createScene();
 
 	// run
 	director->runWithScene(scene);

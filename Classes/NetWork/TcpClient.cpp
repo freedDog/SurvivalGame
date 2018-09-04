@@ -1,10 +1,10 @@
-#include "TcpMsg.h"
+#include "TcpClient.h"
 
-std::mutex TcpMsg::mutex;
+std::mutex TcpClient::mutex;
 
-static TcpMsg _sharedContext;
+static TcpClient _sharedContext;
 
-TcpMsg* TcpMsg::shareTcpMsg() 
+TcpClient* TcpClient::shareTcpClient()
 {
 	static bool s_bFirstUse = true;
 	if (s_bFirstUse) 
@@ -14,44 +14,44 @@ TcpMsg* TcpMsg::shareTcpMsg()
 	return &_sharedContext;
 }
 
-TcpMsg::TcpMsg() :
+TcpClient::TcpClient() :
 	m_isRuning(false), m_recvQueue(NULL), m_sendQueue(NULL)
 {
 	m_recvQueue = new Queue();
 	m_sendQueue = new Queue();
 }
 
-TcpMsg::~TcpMsg() 
+TcpClient::~TcpClient()
 {
 	CC_SAFE_DELETE(m_recvQueue);
 	CC_SAFE_DELETE(m_sendQueue);
 }
 
-void TcpMsg::tcp_start() 
+void TcpClient::tcp_start()
 {
 	m_isRuning = true;
 	m_socket.Connect(SERVER_HOST, SERVER_PORT);
 
-	std::thread tRecv(&TcpMsg::th_recv, this, this);
-	std::thread tSend(&TcpMsg::th_send, this, this);
+	std::thread tRecv(&TcpClient::th_recv, this, this);
+	std::thread tSend(&TcpClient::th_send, this, this);
 	tRecv.detach();
 	tSend.detach();
 
 	CCLOG("tcp_start");
 }
 
-void TcpMsg::tcp_stop()
+void TcpClient::tcp_stop()
 {
 	m_isRuning = false;
 	CCLOG("tcp_stop");
 }
 
-bool TcpMsg::isRuning()
+bool TcpClient::isRuning()
 {
 	return m_isRuning;
 }
 
-Pocket* TcpMsg::MakePocket(const char* msg, unsigned int msgid)
+Pocket* TcpClient::MakePocket(const char* msg, unsigned int msgid)
 {
 	Pocket* pk = new Pocket();
 
@@ -64,25 +64,25 @@ Pocket* TcpMsg::MakePocket(const char* msg, unsigned int msgid)
 	return pk;
 }
 
-Pocket* TcpMsg::MakePocketFromData(const char* data)
+Pocket* TcpClient::MakePocketFromData(const char* data)
 {
 	Pocket* pk = new Pocket;
 	return pk;
 }
 
-Queue* TcpMsg::getRecvQueue()
+Queue* TcpClient::getRecvQueue()
 {
 	return m_recvQueue;
 }
 
-Queue* TcpMsg::getSendQueue()
+Queue* TcpClient::getSendQueue()
 {
 	return m_sendQueue;
 }
 
-void TcpMsg::pushSendQueue(const char* msg, unsigned int msgid)
+void TcpClient::pushSendQueue(const char* msg, unsigned int msgid)
 {
-	Pocket* pk = TcpMsg::MakePocket(msg, msgid);
+	Pocket* pk = TcpClient::MakePocket(msg, msgid);
 	if (m_sendQueue!=NULL) 
 	{
 		m_sendQueue->PushPocket(pk);
@@ -90,9 +90,9 @@ void TcpMsg::pushSendQueue(const char* msg, unsigned int msgid)
 	CCLOG("m_sendQueue have %d", m_sendQueue->getSize());
 }
 
-void TcpMsg::pushRecvQueue(std::string str, unsigned int msgid)
+void TcpClient::pushRecvQueue(const char* msg, unsigned int msgid)
 {
-	Pocket* pk = TcpMsg::MakePocket(str.c_str(),msgid);
+	Pocket* pk = TcpClient::MakePocket(msg,msgid);
 	if (m_recvQueue!=NULL) 
 	{
 		m_recvQueue->PushPocket(pk);
@@ -100,7 +100,7 @@ void TcpMsg::pushRecvQueue(std::string str, unsigned int msgid)
 	CCLOG("m_recvQueue have %d", m_recvQueue->getSize());
 }
 
-void TcpMsg::tcpCheck(void)
+void TcpClient::tcpCheck(void)
 {
 	if (!m_socket.Check()) 
 	{
@@ -124,7 +124,7 @@ void TcpMsg::tcpCheck(void)
 }
 
 //发送数据逻辑
-void TcpMsg::sendFunc(void)
+void TcpClient::sendFunc(void)
 {
 	//网络检测
 	if (m_sendQueue != NULL&&m_sendQueue->getSize() > 0)
@@ -165,19 +165,19 @@ void TcpMsg::sendFunc(void)
 }
 
 //接收数据逻辑;
-void TcpMsg::recvFunc(void)
+void TcpClient::recvFunc(void)
 {
 	//网络检测;
 	tcpCheck();
-
 	//取消息头跟版本和协议;
 	//char recvHeadBuf[8] = "\0";
-	char* recvHeadBuf = new char[8];
-	memset(recvHeadBuf, 0, 8);
-	int recvLen = m_socket.Recv(recvHeadBuf, 8, 0);
-	if (recvLen != 8 && recvLen != -1)
+	int headLen = 10;
+	char* recvHeadBuf = new char[headLen];
+	memset(recvHeadBuf, 0, headLen);
+	int recvLen = m_socket.Recv(recvHeadBuf, headLen, 0);
+	if (recvLen != headLen && recvLen != -1)
 	{
-		while (recvLen < 8)
+		while (recvLen < headLen)
 		{
 			int tLen = m_socket.Recv(recvHeadBuf + recvLen, sizeof(recvHeadBuf - recvLen), 0);//一直读到把消息头接收完;
 			if (tLen != -1)
@@ -192,21 +192,21 @@ void TcpMsg::recvFunc(void)
 		CCLOG("recvFunc");
 
 		//输出消息摘要信息
-		unsigned short bodyLen, version;
+		unsigned short protobufLength;
+		unsigned int msgId, msgLen;
 		unsigned int protocol;
-		bodyLen = recvHeadBuf[0] << 8 | recvHeadBuf[1];
-		version = recvHeadBuf[2] << 8 | recvHeadBuf[3];
-		protocol = (recvHeadBuf[4] << 24) | (recvHeadBuf[5] << 16) | (recvHeadBuf[6] << 8) | (recvHeadBuf[7] & 0xff);
+		protobufLength = recvHeadBuf[0]  | recvHeadBuf[1] << 8;
+		msgId = (recvHeadBuf[2] & 0xff) | recvHeadBuf[3] << 8 | recvHeadBuf[4] << 16 | (recvHeadBuf[5] << 24 );
+		protocol = (recvHeadBuf[6] & 0xff) | (recvHeadBuf[7] << 8) | (recvHeadBuf[8] << 16) | (recvHeadBuf[9] << 24);
 
-		CCLOG("bodyLen:%d,version:%d,protocol:%d,{%02x,%02x,%02x,%02x}", bodyLen, version, protocol, recvHeadBuf[4], recvHeadBuf[5], recvHeadBuf[6], recvHeadBuf[7] & 0xff);
+		CCLOG("bodyLen:%d,msgId:%d,protocol:%d,{%02x,%02x,%02x,%02x}", protobufLength, msgId, protocol, recvHeadBuf[4], recvHeadBuf[5], recvHeadBuf[6], recvHeadBuf[7] & 0xff);
 
 		//接收消息体;
 		int readSize = 0; //当前读取消息的长度;
-		std::string rec_msg;
 		//如果消息体长度大于0;
-		if (bodyLen > 6)
+		if (protobufLength > 6)
 		{
-			int msgLen = bodyLen - 6;
+			int msgLen = protocol;
 			char* msgBody = new char[msgLen + 1];
 			memset(msgBody, 0, msgLen + 1);
 			while (readSize < msgLen)
@@ -217,9 +217,8 @@ void TcpMsg::recvFunc(void)
 					readSize += recvLen;
 					if (readSize == msgLen)
 					{
-						rec_msg.assign((const char *)msgBody, msgLen);
 						CCLOG("RECV: %d", msgLen);
-						pushRecvQueue(rec_msg, protocol);//将消息添加到队列中;
+						pushRecvQueue(msgBody, msgId);//将消息添加到队列中;
 						break;
 					}
 				}
@@ -230,15 +229,15 @@ void TcpMsg::recvFunc(void)
 	}
 }
 
-void TcpMsg::th_send(TcpMsg* TcpMsg)
+void TcpClient::th_send(TcpClient* TcpClient)
 {
 	CCLOG("th_send start");
 	//TcpMsg* TcpMsg = ((TcpMsg*) r);
-	while (TcpMsg->m_isRuning)
+	while (TcpClient->m_isRuning)
 	{
 		//CCLOG("th_send");
 		//TcpMsg::mutex.lock();
-		TcpMsg->sendFunc();
+		TcpClient->sendFunc();
 		//TcpMsg::mutex.unlock();
 #ifdef WIN32
 		Sleep(SLEEP_TIME);
@@ -249,15 +248,15 @@ void TcpMsg::th_send(TcpMsg* TcpMsg)
 	CCLOG("th_send end");
 }
 
-void TcpMsg::th_recv(TcpMsg* TcpMsg)
+void TcpClient::th_recv(TcpClient* TcpClient)
 {
 	CCLOG("th_recv start");
 	//TcpMsg* TcpMsg = ((TcpMsg*) r);
-	while (TcpMsg->m_isRuning)
+	while (TcpClient->m_isRuning)
 	{
 		//CCLOG("th_recv");
 		//TcpMsg::mutex.lock();
-		TcpMsg->recvFunc();
+		TcpClient->recvFunc();
 		//TcpMsg::mutex.unlock();
 #ifdef WIN32
 		Sleep(SLEEP_TIME);
